@@ -1,0 +1,28 @@
+[project]
+name = "abtsdata"
+description = "Lightweight tools for managing ABTS data"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE.txt"}
+authors = [
+    {name = "Brad Buran", email="buran@ohsu.edu"},
+]
+maintainers = [
+    {name = "Brad Buran", email="buran@ohsu.edu"},
+]
+dependencies = [
+    "palettable",
+    "psidata[zarr-backend]",
+	"psiaudio",
+]
+dynamic = ["version"]
+
+[project.scripts]
+summarize-tinnitus = "abts.summarize_tinnitus:main"
+
+[build-system]
+requires = ["setuptools>=61.2", "wheel", "setuptools_scm[toml]>=3.4.3"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "abtsdata/version.py"
