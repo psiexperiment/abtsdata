@@ -18,7 +18,8 @@ dependencies = [
 dynamic = ["version"]
 
 [project.scripts]
-summarize-tinnitus = "abts.summarize_tinnitus:main"
+summarize-tinnitus-2AFC = "abtsdata.summarize_tinnitus_2AFC:main"
+summarize-cohort-tinnitus-2AFC = "abtsdata.summarize_cohort_tinnitus_2AFC:main"
 
 [build-system]
 requires = ["setuptools>=61.2", "wheel", "setuptools_scm[toml]>=3.4.3"]
