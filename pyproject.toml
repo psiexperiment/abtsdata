@@ -11,15 +11,20 @@ maintainers = [
     {name = "Brad Buran", email="buran@ohsu.edu"},
 ]
 dependencies = [
+    "arviz",
     "palettable",
     "psidata[zarr-backend]",
 	"psiaudio",
+    "pymc",
 ]
 dynamic = ["version"]
 
 [project.scripts]
 summarize-tinnitus-2AFC = "abtsdata.summarize_tinnitus_2AFC:main"
 summarize-cohort-tinnitus-2AFC = "abtsdata.summarize_cohort_tinnitus_2AFC:main"
+
+summarize-modulation-2AFC = "abtsdata.summarize_date_modulation_2AFC:main_experiment"
+summarize-date-modulation-2AFC = "abtsdata.summarize_date_modulation_2AFC:main_date"
 
 [build-system]
 requires = ["setuptools>=61.2", "wheel", "setuptools_scm[toml]>=3.4.3"]

@@ -5,7 +5,7 @@ from palettable.tableau import BlueRed_6
 import seaborn as sns
 
 from psidata.api import Recording
-from psidata.manager import add_default_options, DatasetManager, process_files
+from psidata.manager import add_default_options, process_files
 
 
 ttypes = ['NBN', 'SAM', 'silence']
