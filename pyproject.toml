@@ -25,8 +25,11 @@ summarize-cohort-tinnitus-2AFC = "abtsdata.summarize_cohort_tinnitus_2AFC:main"
 
 summarize-modulation-2AFC = "abtsdata.summarize_stm:main_experiment_2AFC"
 summarize-date-modulation-2AFC = "abtsdata.summarize_stm:main_date_2AFC"
+summarize-cohort-modulation-2AFC = "abtsdata.summarize_cohort_stm:main_2AFC"
+
 summarize-modulation-gonogo = "abtsdata.summarize_stm:main_experiment_gonogo"
 summarize-date-modulation-gonogo = "abtsdata.summarize_stm:main_date_gonogo"
+summarize-cohort-modulation-gonogo = "abtsdata.summarize_cohort_stm:main_gonogo"
 
 [build-system]
 requires = ["setuptools>=61.2", "wheel", "setuptools_scm[toml]>=3.4.3"]

@@ -5,6 +5,7 @@ import pandas as pd
 
 from .dataset import Dataset
 from .summarize_tinnitus_2AFC import palette
+from .plot import add_weekends
 
 
 def plot_animal_perf(ax, animal_df):
@@ -19,13 +20,6 @@ def plot_animal_perf(ax, animal_df):
     ax.axis(ymin=0, ymax=1)
     ax.set_ylabel('Performance\n(frac. correct)')
     add_weekends(ax, date_start, date_end)
-
-
-def add_weekends(ax, date_start, date_end):
-    for date in pd.date_range(date_start, date_end):
-        if date.day_of_week == 5:
-            ax.axvspan(date - pd.Timedelta(days=0.5), date + pd.Timedelta(days=1.5), alpha=0.5)
-            ax.text(date + pd.Timedelta(days=0.5), 0.75, 'weekend', transform=ax.get_xaxis_transform(), rotation=90, ha='center', va='center')
 
 
 def summarize_cohort(path=None):

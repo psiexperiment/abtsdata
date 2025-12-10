@@ -10,6 +10,7 @@ from psidata import dataset
 EXPERIMENTS = [
     'tinnitus-2AFC',
     'modulation-2AFC',
+    'modulation-gonogo',
 ]
 
 
@@ -53,3 +54,28 @@ class Dataset:
             glob=glob,
             cb=cb,
         )
+
+    def load_modulation_2AFC_performance(self):
+        glob = '**/*modulation-2AFC performance.csv'
+        return self.load(
+            glob=glob,
+            cb=lambda x: pd.read_csv(x, index_col=0),
+            should_load_cb=lambda x: x.parent.name in x.stem,
+        ).reset_index(drop=True)
+
+    def load_modulation_gonogo_stats(self):
+        glob = '**/*modulation-gonogo stats.json'
+        cb = lambda x: json.loads(x.read_text())
+        return self.load(
+            glob=glob,
+            cb=cb,
+            should_load_cb=lambda x: x.parent.name in x.stem,
+        )
+
+    def load_modulation_gonogo_performance(self):
+        glob = '**/*modulation-gonogo performance.csv'
+        return self.load(
+            glob=glob,
+            cb=lambda x: pd.read_csv(x, index_col=0),
+            should_load_cb=lambda x: x.parent.name in x.stem,
+        ).reset_index(drop=True)
