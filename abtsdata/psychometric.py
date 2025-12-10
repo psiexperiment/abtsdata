@@ -60,10 +60,10 @@ def compute_psi_logit(d, a, b, g, l):
 
 
 def fit_psychometric(summary, hdi_prob=0.9, ref_value=0):
+    '''
+    Fit psychometric function
+    '''
     trace = fit_single_session(summary)
-
-    p_clipped = summary['p'].clip(0.05, 0.95)
-    summary['d'] = stats.norm.ppf(p_clipped) - stats.norm.ppf(p_clipped.loc[ref_value])
 
     # Create a sensible range for plotting the psychometric fit.
     x = summary.index.unique()

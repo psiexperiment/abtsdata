@@ -5,14 +5,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from psidata.api import Recording
 from psidata.manager import add_default_options, process_files
 
 from abtsdata import psychometric
-
-
-GLOB_PATTERN = '**/*modulation-2AFC*'
 
 
 expected_suffixes = [
@@ -24,31 +22,26 @@ expected_suffixes = [
 ]
 
 
-def fmt_settings(cpo, cps, fc, ml, cl):
-    return f'{cps} Hz, {cpo} c/o, {fc} kHz, {cl} dB SPL, {ml} dB SPL masker'
+def fmt_settings(cpo, cps, fc, ml, mg, cl):
+    t = f'{cps}Hz, {cpo}c/o, {fc}kHz, {cl}dB SPL'
+    if np.isfinite(ml):
+        t = f'{t} {ml} dB SPL mask'
+    if np.isfinite(mg):
+        t = f'{t} {mg} dB flank'
+    return t
 
 
-def process_folder(path, manager):
+def load_trial_logs(path, glob_pattern):
     path = Path(path)
-
-    figure, axes = plt.subplot_mosaic(
-        [['resp', 'resp', 'resp', 'tc'],
-        ['tpm', 'tpm', 'tpm', '.'],
-        ['tpm', 'tpm', 'tpm', '.'],
-        ['rt', 'n', 'perf', 'd_prime'],
-        ['rt', 'n', 'perf', 'd_prime']],
-        figsize=(11, 7), layout='constrained')
-    axes['resp'].sharex(axes['tpm'])
-    axes['resp'].sharey(axes['tc'])
-
-    trial_logs = []
-    n_pellets = 0
 
     if path.suffix == '.zip':
         filenames = [path]
     else:
-        filenames = [path for path in path.glob(GLOB_PATTERN) \
+        filenames = [path for path in path.glob(glob_pattern) \
                      if path.suffix == '.zip' and '_exclude' not in str(path)]
+
+    trial_logs = []
+    n_pellets = 0
 
     for filename in filenames:
         ds = Recording(filename)
@@ -56,6 +49,7 @@ def process_folder(path, manager):
             tl = ds.trial_log.copy()
             n_pellets += ds.event_log['event'].str.startswith('deliver_').sum()
             datetime, _ = filename.stem.split(' ', 1)
+            tl['date'], tl['time'] = datetime.split('-')
             tl['datetime'] = datetime
             tl['trial'] = range(len(tl))
             trial_logs.append(tl)
@@ -64,29 +58,54 @@ def process_folder(path, manager):
             # log are missing.
             pass
 
+    cols = ['date', 'time', 'datetime', 'trial']
     if len(trial_logs) == 0:
+        tl = pd.DataFrame(columns=cols)
+        tl['trial_subtype'] = None
+    else:
+        tl = pd.concat(trial_logs)
+    tl = tl.set_index(cols, verify_integrity=True).sort_index()
+
+    return tl, n_pellets
+
+
+def process_folder(path, manager, glob_pattern, yes_resp='resp_2'):
+    path = Path(path)
+
+    figure, axes = plt.subplot_mosaic(
+        [['resp', 'resp', 'resp', 'tc'],
+        ['tpm', 'tpm', 'tpm', '.'],
+        ['tpm', 'tpm', 'tpm', '.'],
+        ['fa', 'fa', 'fa', '.'],
+        ['fa', 'fa', 'fa', '.'],
+        ['rt', 'n', 'perf', 'd_prime'],
+        ['rt', 'n', 'perf', 'd_prime']],
+        figsize=(11, 9), layout='constrained')
+    axes['resp'].sharex(axes['tpm'])
+    axes['resp'].sharey(axes['tc'])
+
+    trial_logs, n_pellets = load_trial_logs(path, glob_pattern=glob_pattern)
+    tl = trial_logs.query('trial_subtype != "remind"').reset_index()
+
+    if len(tl) == 0:
         # No data found. Create sentinel files so this experiment does not get
         # reprocessed.
         manager.save_fig(figure, 'performance.pdf')
         manager.save_df(pd.DataFrame(), 'performance.csv')
         manager.save_df(pd.DataFrame(), 'performance_fit.csv')
-        stats = {
+        exp_stats = {
             'n_trials': 0,
             'tpm_average': 0,
             'n_pellets': n_pellets,
         }
-        manager.save_dict(stats, 'stats.json')
+        manager.save_dict(exp_stats, 'stats.json')
 
         # Create an empty placeholder for the trace file.
         Path(manager.get_proc_filename('trace.nc')).touch()
-        print('returning short')
         return
 
-    tl = pd.concat(trial_logs).set_index(['datetime', 'trial'], verify_integrity=True).sort_index()
-    tl = tl.reset_index()
-
-    tl['yes'] = tl['response'] == 'resp_2'
-    grouping = ['cpo', 'cps', 'fc', 'masker_level', 'center_level']
+    tl['yes'] = tl['response'] == yes_resp
+    grouping = ['cpo', 'cps', 'fc', 'masker_level', 'masker_gain', 'center_level']
 
     # Early versions of program coded increasing depth as positive, when it
     # should be negative (0 indicates unmodulated, with negative values
@@ -120,6 +139,13 @@ def process_folder(path, manager):
     axes['tpm'].set_ylabel('Trials per minute')
     axes['tpm'].legend(bbox_to_anchor=(1, 1), loc='upper right')
 
+    for window in (10, 20, 40):
+        fa = tl.query('stm_depth == 0')['yes'].rolling(window=window).mean()
+        axes['fa'].plot(fa, label=f'Last {window}')
+    axes['fa'].set_xlabel('Trial Number')
+    axes['fa'].set_ylabel('False alarm rate')
+    axes['fa'].legend(bbox_to_anchor=(0, 1), loc='upper left')
+
     m = tl['datetime'] != tl['datetime'].shift(1)
     indices = m.loc[m].index.values
     for ax_name in ('tpm', 'resp'):
@@ -128,12 +154,15 @@ def process_folder(path, manager):
             ax.axvline(i, ls=':', color='k')
             if ax_name == 'resp':
                 continue
-            cpo = tl.loc[i, 'cpo']
-            cps = tl.loc[i, 'cps']
-            fc = tl.loc[i, 'fc']
-            ml = tl.loc[i, 'masker_level']
-            cl = tl.loc[i, 'center_level']
-            key = tl.loc[i, grouping]
+
+            row = tl.loc[i]
+            cpo = row['cpo']
+            cps = row['cps']
+            fc = row['fc']
+            ml = row.get('masker_level', -np.inf)
+            fm = row.get('masker_gain', -np.inf)
+            cl = row['center_level']
+            key = row[grouping]
             t = fmt_settings(*key)
             text = ax.text(i, 1.05, t, transform=ax.get_xaxis_transform(), fontsize='x-small')
             # If it's part of the constrained layout calculations, it sometimes
@@ -154,7 +183,7 @@ def process_folder(path, manager):
         axes['rt'].set_xlabel('STM depth (dB)')
         axes['rt'].set_ylabel('Reaction time (sec)')
 
-    stats = {
+    exp_stats = {
         'n_trials': len(tpm),
         'tpm_average': tpm.mean(),
         'n_pellets': n_pellets,
@@ -168,7 +197,7 @@ def process_folder(path, manager):
         # experiments, there is no need to try and recover some data from
         # these.
         manager.save_fig(figure, 'performance.pdf')
-        manager.save_dict(stats, 'stats.json')
+        manager.save_dict(exp_stats, 'stats.json')
         manager.save_df(pd.DataFrame(), 'performance.csv', index=True)
         manager.save_df(pd.DataFrame(), 'performance_fit.csv', index=True)
         manager.save_df(pd.DataFrame(), 'threshold.csv', index=True)
@@ -192,16 +221,28 @@ def process_folder(path, manager):
         axes['n'].set_xlabel('STM depth (dB)')
         axes['n'].set_ylabel('# of trials')
 
+        if 0 in summary_subset.index:
+            p_clipped = summary_subset['p'].clip(0.05, 0.95)
+            summary_subset['d'] = stats.norm.ppf(p_clipped) - stats.norm.ppf(p_clipped.loc[0])
+            p_clipped = summary_subset['all_p'].clip(0.05, 0.95)
+            summary_subset['all_d'] = stats.norm.ppf(p_clipped) - stats.norm.ppf(p_clipped.loc[0])
+        else:
+            summary_subset['d'] = np.nan
+            summary_subset['all_d'] = np.nan
+
+        text_y = (i + 1) * 0.1
+
         if 0 not in summary_subset.index:
             # If we switched to a new setting, the animal may not have
-            # performed any reference (0) trials.
+            # performed any reference (0) trials. Cannot calculate performance.
             results.setdefault('summary', {})[key] = summary_subset
         elif len(summary_subset) < 4:
             # Not enough depths to fit a meaningful psychometric function.
             results.setdefault('summary', {})[key] = summary_subset
+            psychometric.plot_psychometric(summary=summary_subset, which='p', ax=axes['perf'], color=colors[key], text_y=text_y, show_ci=False)
+            psychometric.plot_psychometric(summary=summary_subset, which='d', ax=axes['d_prime'], color=colors[key], text_y=text_y, show_ci=False)
         else:
             result = psychometric.fit_psychometric(summary_subset)
-            text_y = (i + 1) * 0.1
             psychometric.plot_psychometric(**result, which='p', ax=axes['perf'], color=colors[key], text_y=text_y, show_ci=False)
             psychometric.plot_psychometric(**result, which='d', ax=axes['d_prime'], color=colors[key], text_y=text_y, show_ci=False)
             for k, v in result.items():
@@ -212,11 +253,16 @@ def process_folder(path, manager):
     legend = axes['d_prime'].legend(legend.values(), legend.keys(), bbox_to_anchor=(1, 1), loc='lower right', fontsize='x-small')
     legend.set_in_layout(False)
     manager.save_fig(figure, 'performance.pdf')
-    manager.save_dict(stats, 'stats.json')
+    manager.save_dict(exp_stats, 'stats.json')
     manager.save_df(results['summary'], 'performance.csv', index=True)
     if 'fit' in results:
         manager.save_df(results['fit'], 'performance_fit.csv', index=True)
         manager.save_df(results['threshold'].unstack(), 'threshold.csv', index=True)
+    else:
+        # Create placeholder files to prevent this experiment from being
+        # reprocessed.
+        manager.save_df(pd.DataFrame(), 'performance_fit.csv', index=True)
+        manager.save_df(pd.DataFrame(), 'threshold.csv', index=True)
 
 
 def date_pathfinder(folder, glob_pattern):
@@ -237,20 +283,51 @@ def date_pathfinder(folder, glob_pattern):
                     yield key
 
 
-def main_date():
+glob_2AFC = '**/*modulation-2AFC*'
+glob_gonogo = '**/*modulation-gonogo*'
+
+
+def main_date_2AFC():
     import argparse
     parser = argparse.ArgumentParser('summarize-date-modulation-2AFC')
     add_default_options(parser)
     args = vars(parser.parse_args())
-    process_files(GLOB_PATTERN, process_folder,
+    process_files(glob_2AFC,
+                  lambda *args, **kw: process_folder(*args, **kw, yes_resp='resp_2', glob_pattern=glob_2AFC),
                   expected_suffixes=expected_suffixes,
-                  pathfinder=date_pathfinder, **args)
+                  pathfinder=date_pathfinder,
+                  **args)
 
 
-def main_experiment():
+def main_experiment_2AFC():
     import argparse
     parser = argparse.ArgumentParser('summarize-modulation-2AFC')
     add_default_options(parser)
     args = vars(parser.parse_args())
-    process_files('**/*modulation-2AFC*', process_folder,
-                  expected_suffixes=expected_suffixes, **args)
+    process_files(glob_2AFC,
+                  lambda *args, **kw: process_folder(*args, **kw, yes_resp='resp_2', glob_pattern=glob_2AFC),
+                  expected_suffixes=expected_suffixes,
+                  **args)
+
+
+def main_date_gonogo():
+    import argparse
+    parser = argparse.ArgumentParser('summarize-date-modulation-gonogo')
+    add_default_options(parser)
+    args = vars(parser.parse_args())
+    process_files(glob_gonogo,
+                  lambda *args, **kw: process_folder(*args, **kw, yes_resp='resp_1', glob_pattern=glob_gonogo),
+                  expected_suffixes=expected_suffixes,
+                  pathfinder=date_pathfinder,
+                  **args)
+
+
+def main_experiment_gonogo():
+    import argparse
+    parser = argparse.ArgumentParser('summarize-modulation-gonogo')
+    add_default_options(parser)
+    args = vars(parser.parse_args())
+    process_files(glob_gonogo,
+                  lambda *args, **kw: process_folder(*args, **kw, yes_resp='resp_1', glob_pattern=glob_gonogo),
+                  expected_suffixes=expected_suffixes,
+                  **args)
