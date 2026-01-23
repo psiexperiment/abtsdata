@@ -61,9 +61,15 @@ def load_trial_logs(path, glob_pattern):
     cols = ['date', 'time', 'datetime', 'trial']
     if len(trial_logs) == 0:
         tl = pd.DataFrame(columns=cols)
-        tl['trial_subtype'] = None
     else:
         tl = pd.concat(trial_logs)
+
+    # Early experiments did not have trial_subtype.
+    if 'trial_subtype' not in tl:
+        tl['trial_subtype'] = 'unknown'
+    if 'masker_gain' not in tl:
+        tl['masker_gain'] = -np.inf
+
     tl = tl.set_index(cols, verify_integrity=True).sort_index()
 
     return tl, n_pellets
