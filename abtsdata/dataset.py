@@ -1,5 +1,7 @@
+import datetime as dt
 import json
 from pathlib import Path
+import re
 
 import pandas as pd
 
@@ -14,6 +16,24 @@ EXPERIMENTS = [
 ]
 
 
+DAILY_PATTERN = re.compile(
+    r'^(?P<date>\d{8})\s'
+    r'(?P<animal_id>[-\w]+)\s'
+    'daily\s'
+    r'(?P<experiment_type>(?:' + '|'.join(EXPERIMENTS) + ')(_\w+)?).*$'
+)
+
+
+def daily_filename_parser(filename):
+    try:
+        groups = DAILY_PATTERN.match(filename.stem).groupdict()
+        date = dt.datetime.strptime(groups['date'], '%Y%m%d').date()
+        groups['date'] = pd.to_datetime(date)
+        return groups
+    except AttributeError:
+        raise ValueError(f'Could not parse {filename.stem}')
+
+
 class Dataset:
 
     def __init__(self, path=None):
@@ -21,10 +41,20 @@ class Dataset:
             path = Path('/volume1/data/behavior/animals')
         self.path = path
         self.filename_parser = dataset.get_filename_parser(EXPERIMENTS, include_ear=False)
+        self.daily_filename_parser = daily_filename_parser
 
-    def load(self, *args, **kwargs):
-        return dataset.load(*args, data_path=self.path,
-                            filename_parser=self.filename_parser, **kwargs)
+    def load(self, cb, glob, **kwargs):
+        if 'daily' in glob:
+            filename_parser = self.daily_filename_parser
+        else:
+            filename_parser = self.filename_parser
+        return dataset.load(
+            cb=cb,
+            glob=glob,
+            data_path=self.path,
+            filename_parser=filename_parser,
+            **kwargs,
+        )
 
     def load_raw_jmes(self, *args, **kwargs):
         return dataset.load_raw_jmes(*args, data_path=self.path,
@@ -48,7 +78,7 @@ class Dataset:
         )
 
     def load_modulation_2AFC_stats(self):
-        glob = '**/*modulation-2AFC stats.json'
+        glob = '**/*daily modulation-2AFC stats.json'
         cb = lambda x: json.loads(x.read_text())
         return self.load(
             glob=glob,
@@ -56,26 +86,42 @@ class Dataset:
         )
 
     def load_modulation_2AFC_performance(self):
-        glob = '**/*modulation-2AFC performance.csv'
+        glob = '**/*daily modulation-2AFC performance.csv'
         return self.load(
             glob=glob,
             cb=lambda x: pd.read_csv(x, index_col=0),
-            should_load_cb=lambda x: x.parent.name in x.stem,
+            #should_load_cb=lambda x: x.parent.name in x.stem,
+        ).reset_index(drop=True)
+
+    def load_modulation_2AFC_threshold(self):
+        glob = '**/*daily modulation-2AFC threshold.csv'
+        return self.load(
+            glob=glob,
+            cb=lambda x: pd.read_csv(x, index_col=0),
+            #should_load_cb=lambda x: x.parent.name in x.stem,
         ).reset_index(drop=True)
 
     def load_modulation_gonogo_stats(self):
-        glob = '**/*modulation-gonogo stats.json'
+        glob = '**/*daily modulation-gonogo stats.json'
         cb = lambda x: json.loads(x.read_text())
         return self.load(
             glob=glob,
             cb=cb,
-            should_load_cb=lambda x: x.parent.name in x.stem,
+            #should_load_cb=lambda x: x.parent.name in x.stem,
         )
 
     def load_modulation_gonogo_performance(self):
-        glob = '**/*modulation-gonogo performance.csv'
+        glob = '**/*daily modulation-gonogo performance.csv'
         return self.load(
             glob=glob,
             cb=lambda x: pd.read_csv(x, index_col=0),
-            should_load_cb=lambda x: x.parent.name in x.stem,
+            #should_load_cb=lambda x: x.parent.name in x.stem,
+        ).reset_index(drop=True)
+
+    def load_modulation_gonogo_threshold(self):
+        glob = '**/*daily modulation-gonogo threshold.csv'
+        return self.load(
+            glob=glob,
+            cb=lambda x: pd.read_csv(x, index_col=0),
+            #should_load_cb=lambda x: x.parent.name in x.stem,
         ).reset_index(drop=True)
