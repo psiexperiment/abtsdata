@@ -22,6 +22,10 @@ expected_suffixes = [
 ]
 
 
+glob_2AFC = '**/*modulation-2AFC*'
+glob_gonogo = '**/*modulation-gonogo*'
+
+
 def fmt_settings(cpo, cps, fc, ml, mg, cl):
     t = f'{cps}Hz, {cpo}c/o, {fc}kHz, {cl}dB SPL'
     if np.isfinite(ml):
@@ -289,10 +293,6 @@ def date_pathfinder(folder, glob_pattern):
                     yield key
 
 
-glob_2AFC = '**/*modulation-2AFC*'
-glob_gonogo = '**/*modulation-gonogo*'
-
-
 def main_date_2AFC():
     import argparse
     parser = argparse.ArgumentParser('summarize-date-modulation-2AFC')
@@ -302,6 +302,7 @@ def main_date_2AFC():
                   lambda *args, **kw: process_folder(*args, **kw, yes_resp='resp_2', glob_pattern=glob_2AFC),
                   expected_suffixes=expected_suffixes,
                   pathfinder=date_pathfinder,
+                  manager_kw=dict(file_template=lambda path: f'{path.stem} {path.parent.stem} daily modulation-2AFC'),
                   **args)
 
 
@@ -325,6 +326,7 @@ def main_date_gonogo():
                   lambda *args, **kw: process_folder(*args, **kw, yes_resp='resp_1', glob_pattern=glob_gonogo),
                   expected_suffixes=expected_suffixes,
                   pathfinder=date_pathfinder,
+                  manager_kw=dict(file_template=lambda path: f'{path.stem} {path.parent.stem} daily modulation-gonogo'),
                   **args)
 
 
