@@ -113,7 +113,7 @@ def fit_psychometric(summary, hdi_prob=0.9, ref_value=0):
 
 
 def plot_psychometric(summary, which, fit=None, threshold=None, color='k',
-                      ax=None, show_ci=True, text_y=0.05, **kw):
+                      ax=None, show_ci=True, text_y=0.05, x_label='', **kw):
     if ax is None:
         figure, ax = plt.subplots(1, 1, figsize=(4, 4), constrained_layout=True)
     else:
@@ -142,5 +142,5 @@ def plot_psychometric(summary, which, fit=None, threshold=None, color='k',
                     fontsize='x-small', transform=ax.transAxes, color=color)
         ax.set_ylabel("$d'$")
 
-    ax.set_xlabel('STM depth (dB)')
+    ax.set_xlabel(x_label)
     return figure, ax

@@ -31,6 +31,10 @@ summarize-modulation-gonogo = "abtsdata.summarize_stm:main_experiment_gonogo"
 summarize-date-modulation-gonogo = "abtsdata.summarize_stm:main_date_gonogo"
 summarize-cohort-modulation-gonogo = "abtsdata.summarize_cohort_stm:main_gonogo"
 
+summarize-gap-gonogo = "abtsdata.summarize_gap_detection:main_experiment_gonogo"
+summarize-date-gap-gonogo = "abtsdata.summarize_gap_detection:main_date_gonogo"
+summarize-cohort-gap-gonogo = "abtsdata.summarize_cohort_gap_detection:main_gonogo"
+
 [build-system]
 requires = ["setuptools>=61.2", "wheel", "setuptools_scm[toml]>=3.4.3"]
 build-backend = "setuptools.build_meta"

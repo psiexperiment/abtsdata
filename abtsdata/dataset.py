@@ -72,9 +72,8 @@ class Dataset:
             filename_parser = self.filename_parser
         return dataset.load(
             cb=cb,
-            glob=glob,
-            data_path=self.path,
             filename_parser=filename_parser,
+            scanner=dataset.path_scanner(self.path)(glob),
             **kwargs,
         )
 
@@ -146,4 +145,11 @@ class Dataset:
             glob=glob,
             cb=lambda x: pd.read_csv(x, index_col=0),
             #should_load_cb=lambda x: x.parent.name in x.stem,
+        ).reset_index(drop=True)
+
+    def load_gap_detection_performance(self):
+        glob = '**/*daily gap-detection performance.csv'
+        return self.load(
+            glob=glob,
+            cb=lambda x: pd.read_csv(x, index_col=0),
         ).reset_index(drop=True)
