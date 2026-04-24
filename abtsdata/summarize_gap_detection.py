@@ -19,7 +19,6 @@ def gap_process_folder(path, manager, glob_pattern, yes_resp='resp_2'):
         glob_pattern,
         grouping=['frequency'],
         fmt_settings_cb=gap_fmt_settings,
-        load_trial_logs_cb=behavior.load_trial_logs,
         test_param='gap',
         test_param_label='Gap duration (s)',
         yes_resp=yes_resp,

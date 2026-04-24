@@ -26,9 +26,11 @@ expected_suffixes = [
 ]
 
 
-def load_trial_logs(path, glob_pattern):
-    path = Path(path)
+def load_trial_logs(path, glob_pattern, process_trial_log_cb=None):
+    if process_trial_log_cb is None:
+        process_trial_log_cb = lambda x: x
 
+    path = Path(path)
     if path.suffix == '.zip':
         filenames = [path]
     else:
@@ -41,7 +43,7 @@ def load_trial_logs(path, glob_pattern):
     for filename in filenames:
         ds = Recording(filename)
         try:
-            tl = ds.trial_log.copy()
+            tl = process_trial_log_cb(ds.trial_log.copy())
             n_pellets += ds.event_log['event'].str.startswith('deliver_').sum()
             datetime, _ = filename.stem.split(' ', 1)
             tl['date'], tl['time'] = datetime.split('-')
@@ -58,15 +60,13 @@ def load_trial_logs(path, glob_pattern):
         tl = pd.DataFrame(columns=cols)
     else:
         tl = pd.concat(trial_logs)
-
     tl = tl.set_index(cols, verify_integrity=True).sort_index()
-
     return tl, n_pellets
 
 
 def process_folder(path, manager, glob_pattern, grouping, fmt_settings_cb,
-                   load_trial_logs_cb, test_param, test_param_label,
-                   yes_resp='resp_2'):
+                   test_param, test_param_label, yes_resp='resp_2',
+                   process_trial_log_cb=None):
     path = Path(path)
 
     figure, axes = plt.subplot_mosaic(
@@ -81,7 +81,8 @@ def process_folder(path, manager, glob_pattern, grouping, fmt_settings_cb,
     axes['resp'].sharex(axes['tpm'])
     axes['resp'].sharey(axes['tc'])
 
-    trial_logs, n_pellets = load_trial_logs_cb(path, glob_pattern=glob_pattern)
+    trial_logs, n_pellets = load_trial_logs(path, glob_pattern,
+                                            process_trial_log_cb)
     tl = trial_logs.query('trial_subtype != "remind"').reset_index()
 
     if len(tl) == 0:

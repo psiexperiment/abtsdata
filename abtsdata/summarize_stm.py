@@ -18,9 +18,7 @@ def stm_fmt_settings(cpo, cps, fc, ml, mg, cl):
     return t
 
 
-def stm_load_trial_logs(path, glob_pattern):
-    tl, n_pellets = behavior.load_trial_logs(path, glob_pattern)
-
+def stm_process_trial_log(tl):
     # Early experiments did not have trial_subtype.
     if 'trial_subtype' not in tl:
         tl['trial_subtype'] = 'unknown'
@@ -35,7 +33,7 @@ def stm_load_trial_logs(path, glob_pattern):
     if 'masker_level' not in tl:
         tl['masker_level'] = -np.inf
 
-    return tl, n_pellets
+    return tl
 
 
 def stm_process_folder(path, manager, glob_pattern, yes_resp='resp_2'):
@@ -45,7 +43,7 @@ def stm_process_folder(path, manager, glob_pattern, yes_resp='resp_2'):
         glob_pattern,
         grouping=['cpo', 'cps', 'fc', 'masker_level', 'masker_gain', 'center_level'],
         fmt_settings_cb=stm_fmt_settings,
-        load_trial_logs_cb=stm_load_trial_logs,
+        process_trial_log_cb=stm_process_trial_log,
         test_param='stm_depth',
         test_param_label='STM depth (dB)',
         yes_resp=yes_resp,
