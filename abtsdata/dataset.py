@@ -13,6 +13,7 @@ EXPERIMENTS = [
     'tinnitus-2AFC',
     'modulation-2AFC',
     'modulation-gonogo',
+    'gap-detection',
 ]
 
 
