@@ -66,8 +66,11 @@ def load_trial_logs(path, glob_pattern, process_trial_log_cb=None):
 
 def process_folder(path, manager, glob_pattern, grouping, fmt_settings_cb,
                    test_param, test_param_label, yes_resp='resp_2',
-                   process_trial_log_cb=None):
+                   process_trial_log_cb=None, psychometric_fit_kw=None, x_scale='linear'):
     path = Path(path)
+
+    if psychometric_fit_kw is None:
+        psychometric_fit_kw = {}
 
     figure, axes = plt.subplot_mosaic(
         [['resp', 'resp', 'resp', 'tc'],
@@ -222,12 +225,29 @@ def process_folder(path, manager, glob_pattern, grouping, fmt_settings_cb,
         elif len(summary_subset) < 4:
             # Not enough depths to fit a meaningful psychometric function.
             results.setdefault('summary', {})[key] = summary_subset
-            psychometric.plot_psychometric(summary=summary_subset, which='p', ax=axes['perf'], color=colors[key], text_y=text_y, show_ci=False, x_label=test_param_label)
-            psychometric.plot_psychometric(summary=summary_subset, which='d', ax=axes['d_prime'], color=colors[key], text_y=text_y, show_ci=False, x_label=test_param_label)
+            psychometric.plot_psychometric(summary=summary_subset, which='p',
+                                           ax=axes['perf'], color=colors[key],
+                                           text_y=text_y, show_ci=False,
+                                           x_label=test_param_label)
+
+            psychometric.plot_psychometric(summary=summary_subset, which='d',
+                                           ax=axes['d_prime'],
+                                           color=colors[key], text_y=text_y,
+                                           show_ci=False,
+                                           x_label=test_param_label)
         else:
-            result = psychometric.fit_psychometric(summary_subset)
-            psychometric.plot_psychometric(**result, which='p', ax=axes['perf'], color=colors[key], text_y=text_y, show_ci=False, x_label=test_param_label)
-            psychometric.plot_psychometric(**result, which='d', ax=axes['d_prime'], color=colors[key], text_y=text_y, show_ci=False, x_label=test_param_label)
+            result = psychometric.fit_psychometric(summary_subset,
+                                                   **psychometric_fit_kw)
+
+            psychometric.plot_psychometric(**result, which='p',
+                                           ax=axes['perf'], color=colors[key],
+                                           text_y=text_y, show_ci=False,
+                                           x_label=test_param_label)
+            psychometric.plot_psychometric(**result, which='d',
+                                           ax=axes['d_prime'],
+                                           color=colors[key], text_y=text_y,
+                                           show_ci=False,
+                                           x_label=test_param_label)
             for k, v in result.items():
                 results.setdefault(k, {})[key] = v
 

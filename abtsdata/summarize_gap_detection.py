@@ -8,20 +8,34 @@ from . import _summarize_behavior as behavior
 glob_gonogo = '**/*gap-detection*'
 
 
-def gap_fmt_settings(frequency):
-    return f'{frequency}Hz'
+def gap_fmt_settings(frequency, n_gap):
+    return f'{n_gap} gaps, {frequency}Hz'
 
 
-def gap_process_folder(path, manager, glob_pattern, yes_resp='resp_2'):
+def gap_process_trial_log(tl):
+    # Early versions did not have n_gap.
+    if 'n_gap' not in tl:
+        tl['n_gap'] = 1
+    return tl
+
+
+def gap_process_folder(path, manager, glob_pattern, yes_resp):
     behavior.process_folder(
         path,
         manager,
         glob_pattern,
-        grouping=['frequency'],
+        grouping=['frequency', 'n_gap'],
         fmt_settings_cb=gap_fmt_settings,
+        process_trial_log_cb=gap_process_trial_log,
         test_param='gap',
         test_param_label='Gap duration (s)',
         yes_resp=yes_resp,
+        psychometric_fit_kw={
+            'core': 'poly',
+            'sigmoid': 'exponential',
+            'alpha': {'dist': 'HalfNormal', 'sigma': 1},
+            'beta': {'dist': 'LogNormal', 'mu': 1},
+        },
     )
 
 

@@ -47,6 +47,13 @@ def stm_process_folder(path, manager, glob_pattern, yes_resp='resp_2'):
         test_param='stm_depth',
         test_param_label='STM depth (dB)',
         yes_resp=yes_resp,
+        psychometric_fit_kw={
+            'core': 'ab',
+            'sigmoid': 'logistic',
+            'alpha': {'dist': 'Normal', 'mu': 0, 'sigma': 10},
+            'beta': {'dist': 'LogNormal', 'mu': 1},
+            'slope': 'negative',
+        },
     )
 
 
